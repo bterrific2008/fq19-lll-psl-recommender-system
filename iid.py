@@ -4,6 +4,7 @@ import math
 import os
 
 import pandas
+import graphlab
 import numpy as np
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestRegressor
@@ -28,7 +29,6 @@ def getData():
     bookRatingData = pandas.read_csv('BX-Book-Ratings.csv', error_bad_lines=False, encoding="utf-8",
                                      sep=";")
     bookRatingData.columns = ['userId', 'ISBN', 'bookRating']
-
 
     def bookDataYear(bookData):
         """
@@ -128,44 +128,52 @@ def getData():
 
         return bookRatingData
 
+    def splitImplicitExplicit(bookRatingData):
+        """
+
+        :param bookRatingData:
+        :return:
+        """
+
+        # ratings with a score of 1 are "explicit" ratings (their score is explicitly stated)
+        explicitRatings = bookRatingData[bookRatingData.bookRating != 0]
+
+        # ratings with a value of 0 are "implicit" ratings (their score is "implied"
+        implicitRatings = bookRatingData[bookRatingData.bookRating == 0]
+
+        return explicitRatings, implicitRatings
+
     bookRatingData = dataExists(bookRatingData, bookData, userData)
+    explicitRatingData, implicitRatingData = splitImplicitExplicit(bookRatingData)
 
-    masterData = pandas.merge(bookData, bookRatingData, on="ISBN", how='outer')
-    masterData = pandas.merge(masterData, userData, on="User-ID", how='outer')
+    def bookPopularity(explicitRatingData, bookData):
+        """
 
-    # drop all data with null columns
-    # could be problematic, as some ratings already have null values
-    #   in them
-    masterData = masterData.dropna()
+        :param explicitRatingData:
+        :param bookData:
+        :return:
+        """
 
-    # remove books with under 10 reviews
-    masterData = masterData[masterData.groupby("ISBN").ISBN.transform('count') > 10]
+        ratingCount = pandas.DataFrame(explicitRatingData.groupby(['ISBN'])['bookRating'].sum())
 
-    print(len(masterData.index))
+        top10 = ratingCount.sort_values('bookRating', ascending=False).head(10)
+        top10 = top10.merge(bookData, left_index=True, right_on='ISBN')
+        print(top10)
 
-    values = masterData[['ISBN', 'Book-Rating']]
-    features = masterData[
-        ['ISBN', 'bookTitle', 'bookAuthor', 'yearOfPublication', 'publisher', 'User-ID',
-         'Location', 'Age']]
+        return ratingCount.merge(bookData, left_index=True, right_on='ISBN')
 
-    # Clean up the data a bit.
-    features = features.fillna(0)
+    # TODO find a use for this
+    explicitRatingCount = bookPopularity(explicitRatingData, bookData)
 
-    # Turn strings into ints.
-    for stringColumn in ['ISBN', 'Book-Title', 'Book-Author', 'Location',
-                         'Publisher']:
-        encoder = preprocessing.LabelEncoder()
-        features[stringColumn] = encoder.fit_transform(features[stringColumn])
+    userExplicitRating = userData[userData.userId.isin(explicitRatingData.userId)]
+    userImplicitRating = userData[userData.userId.isin(implicitRatingData.userId)]
 
-    # TODO Normalize the ratings? to make eval more consistent.
-    # Figure out if we should do that or not
-    """minPrice = float(values['price'].min())
-    maxPrice = float(values['price'].max())
-    pandas.options.mode.chained_assignment = None
-    values['price'] = values['price'].apply(
-        lambda price: 0.25 + (price - minPrice) / (maxPrice - minPrice) / 2.0)"""
+    # TODO make the values and features work for implicit and explicit data
+    values = explicitRatingData
+    items = bookData[bookData.ISBN.isin(explicitRatingData.ISBN)]
+    users = userExplicitRating
 
-    return features, values
+    return items, users, values
 
 
 def evaluate(predictions, testValues):
@@ -184,11 +192,17 @@ def evaluate(predictions, testValues):
 
 
 def main():
-    features, values = getData()
+    item, users, values = getData()
 
+    # construct an SFrame from a dataframe because apparently that's a thing now
+    items = graphlab.SFrame(data=item)
+
+    users = graphlab.SFrame(data=users)
+
+    """ not sure if we need this...
     # Drop the id columns.
     features = features.drop('ISBN', 1)
-    values = values['Book-Rating']
+    values = values['Book-Rating']"""
 
     trainFeatures, testFeatures, trainValues, testValues = train_test_split(features, values,
                                                                             random_state=4)
