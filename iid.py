@@ -201,12 +201,6 @@ def collaborativeFiltering(items, users, values):
     values = values[values['bookRating'].isin(counts[counts >= 100].index)]
 
     ratingMatrix = values.pivot(index='userId', columns='ISBN', values='bookRating')
-    userId = ratingMatrix.index
-    ISBN = ratingMatrix.columns
-    print(ratingMatrix.shape)
-
-    numUsers = ratingMatrix.shape[0]
-    nBooks = ratingMatrix.shape[1]
 
     ratingMatrix.fillna(0, inplace=True)
     ratingMatrix = ratingMatrix.astype(np.int32)
@@ -256,16 +250,79 @@ def collaborativeFiltering(items, users, values):
     predictUserbased(11676, '0001056107', ratingMatrix)
 
 
+def itemBasedRecommendation(items, users, values):
+    counts1 = values['userId'].value_counts()
+    values = values[values['userId'].isin(counts1[counts1 >= 100].index)]
+    counts = values['bookRating'].value_counts()
+    values = values[values['bookRating'].isin(counts[counts >= 100].index)]
+
+    ratingMatrix = values.pivot(index='userId', columns='ISBN', values='bookRating')
+    userId = ratingMatrix.index
+    ISBN = ratingMatrix.columns
+    print(ratingMatrix.shape)
+
+    numUsers = ratingMatrix.shape[0]
+    nBooks = ratingMatrix.shape[1]
+
+    ratingMatrix.fillna(0, inplace=True)
+    ratingMatrix = ratingMatrix.astype(np.int32)
+
+    def findKSimilarItems(itemId, ratings, metric=metric, k=k):
+        similarities = []
+        indices = []
+        ratings = ratings.T
+        loc = ratings.index.get_loc(itemId)
+        model_knn = NearestNeighbors(metric=metric, algorithm='brute')
+        model_knn.fit(ratings)
+
+        distances, indicies = model_knn.kneighbors(ratings.iloc[loc, :].values.reshape(1, -1),
+                                                   n_neighbors=k + 1)
+        similarities = 1 - distances.flatten()
+
+        return similarities, indicies
+
+    def predictItemBased(userId, itemId, ratings, metric=metric, k=k):
+        prediction = wtd_sum = 0
+        user_loc = ratings.index.get_loc(userId)
+        item_loc = ratings.columns.get_loc(itemId)
+
+        # similar users based on correlations coefficients
+        similarities, indices = findKSimilarItems(itemId, ratings)
+
+        sum_wt = np.sum(similarities) - 1
+        product = 1
+        for i in range(0, len(indices.flatten())):
+            if indices.flatten()[i] == item_loc:
+                continue;
+            else:
+                product = ratings.iloc[user_loc, indices.flatten()[i]] * (similarities[i])
+                wtd_sum = wtd_sum + product
+
+        prediction = int(round(wtd_sum/sum_wt))
+
+        if prediction <= 0:
+            prediction = 1
+        elif prediction > 10:
+            prediction = 10
+
+        print("Prediction for user {} -> item {} : {}".format(userId, itemId, prediction))
+
+        return prediction
+
+    predictItemBased(11676, '0001056107', ratingMatrix)
+
+
+
 def main():
     items, users, values = getData()
 
     collaborativeFiltering(items, users, values)
+    itemBasedRecommendation(items, users, values)
 
     """ not sure if we need this...
     # Drop the id columns.
     features = features.drop('ISBN', 1)
     values = values['Book-Rating']"""
-
 
     return
 
