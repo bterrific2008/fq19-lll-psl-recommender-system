@@ -95,8 +95,8 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/iid.py</url>
-          <line>165</line>
-          <option name="timeStamp" value="8" />
+          <line>174</line>
+          <option name="timeStamp" value="14" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

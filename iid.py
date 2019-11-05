@@ -4,11 +4,14 @@ import math
 import os
 
 import pandas
-import graphlab
 import numpy as np
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.neighbors import NearestNeighbors
 from sklearn.model_selection import train_test_split
+
+k = 10
+metric = 'cosine'
 
 
 def getData():
@@ -191,18 +194,80 @@ def evaluate(predictions, testValues):
     print("MSE: %f" % (mse))
 
 
+def collaborativeFiltering(items, users, values):
+    counts1 = values['userId'].value_counts()
+    values = values[values['userId'].isin(counts1[counts1 >= 100].index)]
+    counts = values['bookRating'].value_counts()
+    values = values[values['bookRating'].isin(counts[counts >= 100].index)]
+
+    ratingMatrix = values.pivot(index='userId', columns='ISBN', values='bookRating')
+    userId = ratingMatrix.index
+    ISBN = ratingMatrix.columns
+    print(ratingMatrix.shape)
+
+    numUsers = ratingMatrix.shape[0]
+    nBooks = ratingMatrix.shape[1]
+
+    ratingMatrix.fillna(0, inplace=True)
+    ratingMatrix = ratingMatrix.astype(np.int32)
+
+    def findKSimilarUsers(userId, ratings, metric=metric, k=k):
+        similarities = []
+        indicies = []
+        model_knn = NearestNeighbors(metric=metric, algorithm='brute')
+        model_knn.fit(ratings)
+        loc = ratings.index.get_loc(userId)
+        distances, indicies = model_knn.kneighbors(ratings.iloc[loc, :].values.reshape(1, -1),
+                                                   n_neighbors=k + 1)
+        similarities = 1 - distances.flatten()
+
+        return similarities, indicies
+
+    def predictUserbased(userId, itemId, ratings, metric=metric, k=k):
+        prediction = 0
+        user_loc = ratings.index.get_loc(userId)
+        item_loc = ratings.columns.get_loc(itemId)
+        similarities, indices = findKSimilarUsers(userId, ratings, metric, k)
+
+        mean_rating = ratings.iloc[user_loc, :].mean()
+        sum_wt = np.sum(similarities) - 1
+        product = 1
+        wtd_sum = 0
+
+        for i in range(0, len(indices.flatten())):
+            if indices.flatten()[i] == user_loc:
+                continue;
+            else:
+                ratings_diff = ratings.iloc[indices.flatten()[i], item_loc] - np.mean(
+                    ratings.iloc[indices.flatten()[i], :])
+                product = ratings_diff * (similarities[i])
+                wtd_sum = wtd_sum + product
+
+        if prediction <= 0:
+            prediction = 1
+        elif prediction > 10:
+            prediction = 10
+
+        prediction = int(round(mean_rating + (wtd_sum / sum_wt)))
+        print("Prediction for user {} -> item {} : {}".format(userId, itemId, prediction))
+
+        return prediction
+
+    predictUserbased(11676, '0001056107', ratingMatrix)
+
+
 def main():
-    item, users, values = getData()
+    items, users, values = getData()
 
-    # construct an SFrame from a dataframe because apparently that's a thing now
-    items = graphlab.SFrame(data=item)
-
-    users = graphlab.SFrame(data=users)
+    collaborativeFiltering(items, users, values)
 
     """ not sure if we need this...
     # Drop the id columns.
     features = features.drop('ISBN', 1)
     values = values['Book-Rating']"""
+
+
+    return
 
     trainFeatures, testFeatures, trainValues, testValues = train_test_split(features, values,
                                                                             random_state=4)
