@@ -11,7 +11,6 @@ from sklearn.model_selection import train_test_split
 import iid
 
 def main():
-    print("lmao")
     os.makedirs('data', exist_ok = True)
 
     features, values = iid.getData()
