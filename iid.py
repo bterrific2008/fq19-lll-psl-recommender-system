@@ -4,7 +4,6 @@ import math
 import os
 
 import pandas
-import graphlab
 import numpy as np
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestRegressor
@@ -194,10 +193,6 @@ def evaluate(predictions, testValues):
 def main():
     item, users, values = getData()
 
-    # construct an SFrame from a dataframe because apparently that's a thing now
-    items = graphlab.SFrame(data=item)
-
-    users = graphlab.SFrame(data=users)
 
     """ not sure if we need this...
     # Drop the id columns.
