@@ -3,11 +3,20 @@
 import math
 import os
 
+# Simple Python Recommendation System Enginer (SurPRISE)
+from surprise import KNNBasic
+from surprise import Dataset
+from surprise import Reader
+from surprise import NMF
+from surprise import SVD
+from surprise import accuracy
+from surprise.model_selection import cross_validate
+from surprise.model_selection import train_test_split
+
 import pandas
 import numpy as np
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
 
 
 def getData():
@@ -17,6 +26,7 @@ def getData():
     :return:
     """
 
+    # TODO put all of these into pickle files so we don't do this step again and again...
     bookData = pandas.read_csv('BX-Books.csv', error_bad_lines=False, sep=';', encoding='utf-8')
     # remove the useless book cover columns
     bookData.drop(columns=["Image-URL-S", "Image-URL-M", "Image-URL-L"], inplace=True)
@@ -175,31 +185,42 @@ def getData():
     return items, users, values
 
 
-def evaluate(predictions, testValues):
-    testValues = list(testValues)
+def evaluate(predictions):
+    mae = accuracy.mae(predictions)
+    rmse = accuracy.rmse(predictions)
+    mse = accuracy.mse(predictions)
 
-    mse = 0.0
-
-    for i in range(len(predictions)):
-        # print("Prediction: %.2f vs Actual: %.2f" % (predictions[i], testValues[i]))
-
-        mse += (predictions[i] - testValues[i]) ** 2
-
-    mse /= len(predictions)
-
-    print("MSE: %f" % (mse))
+    return mae, rmse, mse
 
 
 def main():
     item, users, values = getData()
 
+    reader = Reader(rating_scale=(1, 10))
+    data = Dataset.load_from_df(values[["userId", "ISBN", "bookRating"]], reader)
 
-    """ not sure if we need this...
-    # Drop the id columns.
-    features = features.drop('ISBN', 1)
-    values = values['Book-Rating']"""
+    trainset, testset = train_test_split(data, test_size=.2)
 
-    trainFeatures, testFeatures, trainValues, testValues = train_test_split(features, values,
+    algo = SVD()
+    algo.fit(trainset)
+    predictions = algo.test(testset)
+    print("svd")
+    evaluate(predictions)
+
+    algo = SVD(biased=False)
+    algo.fit(trainset)
+    predictions = algo.test(testset)
+    print("svd biased false")
+    evaluate(predictions)
+
+    # TODO timeout error
+    algo = KNNBasic(sim_options={'user_based': True})
+    algo.fit(trainset)
+    predictions = algo.test(trainset)
+    print("knn basic")
+    evaluate(predictions)
+
+    """trainFeatures, testFeatures, trainValues, testValues = train_test_split(features, values,
                                                                             random_state=4)
 
     regressor = RandomForestRegressor(n_estimators=10, random_state=12345, n_jobs=8)
@@ -207,7 +228,7 @@ def main():
 
     predictions = regressor.predict(testFeatures)
 
-    evaluate(predictions, testValues)
+    evaluate(predictions, testValues)"""
 
 
 if (__name__ == '__main__'):
