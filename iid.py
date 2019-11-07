@@ -3,20 +3,11 @@
 import math
 import os
 
-# Simple Python Recommendation System Enginer (SurPRISE)
-from surprise import KNNBasic
-from surprise import Dataset
-from surprise import Reader
-from surprise import NMF
-from surprise import SVD
-from surprise import accuracy
-from surprise.model_selection import cross_validate
-from surprise.model_selection import train_test_split
-
 import pandas
 import numpy as np
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
 
 
 def getData():
@@ -191,7 +182,7 @@ def getData():
         with its book data (the DataFrame bookData)
         """
 
-        ratingCount = pandas.DataFrame(explicitRatingData.groupby(['ISBN'])['bookRating'].sum())
+        ratingCount = pandas.DataFrame(explicitRatingData.groupby(['ISBN'])['bookRating'].mean())
 
         # TODO: rename "bookRating" to "popularityRating"
         top10 = ratingCount.sort_values('bookRating', ascending=False).head(10)
@@ -211,58 +202,44 @@ def getData():
     items = bookData[bookData.ISBN.isin(explicitRatingData.ISBN)]
     users = userExplicitRating
 
-    return items, users, values
+    return explicitRatingCount
 
 
-def evaluate(predictions):
-    """
-    Prints to stdout the Mean Absolute Error, Root Mean Squared Error, and Mean Squared Error
-    Also returns the MAE, RMSE, and MSE
+def evaluate(predictions, testValues):
+    testValues = list(testValues)
 
-    :param predictions: a surprise.prediction_algorithms.predictions object, that contains
-    predictions to evaluate
-    :return: the MAE, RMSE, and MSE
-    """
+    mse = 0.0
 
-    mae = accuracy.mae(predictions)
-    rmse = accuracy.rmse(predictions)
-    mse = accuracy.mse(predictions)
+    for i in range(len(predictions)):
+        # print("Prediction: %.2f vs Actual: %.2f" % (predictions[i], testValues[i]))
 
-    return mae, rmse, mse
+        mse += (predictions[i] - testValues[i]) ** 2
+
+    mse /= len(predictions)
+
+    print("MSE: %f" % (mse))
 
 
 def main():
-    item, users, values = getData()
+    ratings = getData()
 
-    reader = Reader(rating_scale=(1, 10))
-    data = Dataset.load_from_df(values[["userId", "ISBN", "bookRating"]], reader)
+    values = ratings[['bookRating']]
+    features = ratings[['bookTitle', 'bookAuthor', 'yearOfPublication', 'publisher']]
+
+    # Turn strings into ints.
+    for stringColumn in ['bookAuthor', 'bookTitle', 'publisher']:
+        encoder = preprocessing.LabelEncoder()
+        features[stringColumn] = encoder.fit_transform(features[stringColumn].astype(str))
 
     # splits that data into training sets and testing sets
-    trainset, testset = train_test_split(data, test_size=.2)
+    trainFeatures, testFeatures, trainValues, testValues = train_test_split(features, values, random_state = 4)
 
-    # tests the model against a Singular Value Decomposition model
-    algo = SVD()
-    algo.fit(trainset)
-    predictions = algo.test(testset)
-    print("svd")
-    evaluate(predictions)
+    regressor = RandomForestRegressor(n_estimators=10, random_state=12345, n_jobs=8)
+    regressor.fit(trainFeatures, trainValues)
 
-    # tests the model against a Probabilistic Matrix Factorization Model
-    # TODO check to make sure  this actually does what we want it to do.
-    #  I took it verbatim from the tutorial
-    algo = SVD(biased=False)
-    algo.fit(trainset)
-    predictions = algo.test(testset)
-    print("svd biased false")
-    evaluate(predictions)
+    predictions = regressor.predict(testFeatures)
 
-    # tests the model against a K Nearest Neighbors model
-    # TODO getting a timeout error
-    algo = KNNBasic(sim_options={'user_based': True})
-    algo.fit(trainset)
-    predictions = algo.test(trainset)
-    print("knn basic")
-    evaluate(predictions)
+    evaluate(predictions, testValues['bookRating'].to_numpy())
 
 
 if (__name__ == '__main__'):
