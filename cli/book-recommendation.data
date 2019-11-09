@@ -1,0 +1,19 @@
+predicates:
+  Rating/1: open
+  # SamePublisher/2: closed
+  SameAuthor/2: closed
+  MeanRating/1: closed
+  LocalPrediction/1: closed
+
+observations:
+  Rating: ../data/rating_obs.txt
+  # SamePublisher: ../data/same_publisher_obs.txt
+  SameAuthor: ../data/same_author_obs.txt
+  MeanRating: ../data/mean_rating_obs.txt
+  LocalPrediction: ../data/iid_obs.txt
+
+targets:
+  Rating: ../data/rating_targets.txt
+
+truth:
+  Rating: ../data/rating_truth.txt

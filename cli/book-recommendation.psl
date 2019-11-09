@@ -1,0 +1,10 @@
+// Ratings are simiar with the same author.
+0.001: SameAuthor(B, A) & Rating(A) -> Rating(B) ^2
+
+// Ratings are simiar for having the same publisher.
+// 1.0: SamePublisher(A, B) & Rating(A) -> Rating(B) ^2
+
+10.0: LocalPrediction(A) = Rating(A) ^2
+
+2.5: Rating(A) = MeanRating('0') ^2
+0.1: !Rating(A) ^2

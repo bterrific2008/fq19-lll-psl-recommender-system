@@ -202,6 +202,11 @@ def getData():
     items = bookData[bookData.ISBN.isin(explicitRatingData.ISBN)]
     users = userExplicitRating
 
+    # Turn strings into ints.
+    for stringColumn in ['bookAuthor', 'bookTitle', 'publisher']:
+        encoder = preprocessing.LabelEncoder()
+        explicitRatingCount[stringColumn] = encoder.fit_transform(explicitRatingCount[stringColumn].astype(str))
+
     return explicitRatingCount
 
 
@@ -225,11 +230,6 @@ def main():
 
     values = ratings[['bookRating']]
     features = ratings[['bookTitle', 'bookAuthor', 'yearOfPublication', 'publisher']]
-
-    # Turn strings into ints.
-    for stringColumn in ['bookAuthor', 'bookTitle', 'publisher']:
-        encoder = preprocessing.LabelEncoder()
-        features[stringColumn] = encoder.fit_transform(features[stringColumn].astype(str))
 
     # splits that data into training sets and testing sets
     trainFeatures, testFeatures, trainValues, testValues = train_test_split(features, values, random_state = 4)
