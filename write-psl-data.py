@@ -15,6 +15,7 @@ def main():
     ratings = iid.getData()
 
     values = ratings[['ISBN','bookRating']]
+    values['bookRating'] = values['bookRating'].apply(lambda x: x * 0.1)
     features = ratings[['ISBN','bookTitle', 'bookAuthor', 'yearOfPublication', 'publisher']]
 
     meanRating = values['bookRating'].mean()
