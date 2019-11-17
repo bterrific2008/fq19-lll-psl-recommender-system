@@ -203,11 +203,28 @@ def getData():
     users = userExplicitRating
 
     # Turn strings into ints.
-    for stringColumn in ['bookAuthor', 'bookTitle', 'publisher']:
+    for stringColumn in ['ISBN', 'bookAuthor', 'bookTitle', 'publisher']:
         encoder = preprocessing.LabelEncoder()
         explicitRatingCount[stringColumn] = encoder.fit_transform(explicitRatingCount[stringColumn].astype(str))
 
-    return explicitRatingCount
+    def normalizeRatings(data):
+        """
+        Normalizes the book ratings
+
+        :param data: a DF with a 'bookRating' column
+        :return: a DF where the 'bookRating' column is normalized
+        """
+
+        minRating = float(data['bookRating'].min())
+        maxRating = float(data['bookRating'].max())
+        pandas.options.mode.chained_assignment = None
+        data['bookRating'] = data['bookRating'].apply(
+            lambda rating: (rating - minRating) / (maxRating - minRating)
+        )
+
+        return data
+
+    return normalizeRatings(explicitRatingCount)
 
 
 def evaluate(predictions, testValues):
