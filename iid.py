@@ -192,7 +192,7 @@ def getData():
         # TODO: rename "bookRating" to "popularityRating"
         top10 = ratingCount.sort_values('bookRating', ascending=False).head(10)
         top10 = top10.merge(bookData, left_index=True, right_on='ISBN')
-        print(top10)
+        #print(top10)
 
         return ratingCount.merge(bookData, left_index=True, right_on='ISBN')
 
@@ -208,10 +208,24 @@ def getData():
     users = userExplicitRating
 
     # Turn strings into ints.
-    for stringColumn in ['ISBN', 'bookAuthor', 'bookTitle', 'publisher']:
-        encoder = preprocessing.LabelEncoder()
-        explicitRatingCount[stringColumn] = encoder.fit_transform(explicitRatingCount[stringColumn].astype(str))
-        print()
+    # for stringColumn in ['ISBN', 'bookAuthor', 'bookTitle', 'publisher']:
+    #     encoder = preprocessing.LabelEncoder()
+    #     explicitRatingCount[stringColumn] = encoder.fit_transform(explicitRatingCount[stringColumn].astype(str))
+    #     print()
+
+    encoderISBN = preprocessing.LabelEncoder()
+    explicitRatingCount['ISBN'] = encoderISBN.fit_transform(explicitRatingCount['ISBN'].astype(str))
+
+    encoderBookAuthor = preprocessing.LabelEncoder()
+    explicitRatingCount['bookAuthor'] = encoderBookAuthor.fit_transform(explicitRatingCount['bookAuthor'].astype(str))
+
+    encoderBookTitle = preprocessing.LabelEncoder()
+    explicitRatingCount['bookTitle'] = encoderBookTitle.fit_transform(explicitRatingCount['bookTitle'].astype(str))
+
+    encoderPublisher = preprocessing.LabelEncoder()
+    explicitRatingCount['publisher'] = encoderPublisher.fit_transform(explicitRatingCount['publisher'].astype(str))
+
+    
 
     def normalizeRatings(data):
         """
