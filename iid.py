@@ -9,6 +9,11 @@ from sklearn import preprocessing
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
+def save_classifier(classifier, classifier_fname):
+    classifier_file = open(classifier_fname, 'wb')
+    pickle.dump(classifier, classifier_file)
+    classifier_file.close()
+
 
 def getData():
     """
@@ -206,6 +211,7 @@ def getData():
     for stringColumn in ['ISBN', 'bookAuthor', 'bookTitle', 'publisher']:
         encoder = preprocessing.LabelEncoder()
         explicitRatingCount[stringColumn] = encoder.fit_transform(explicitRatingCount[stringColumn].astype(str))
+        print()
 
     def normalizeRatings(data):
         """
