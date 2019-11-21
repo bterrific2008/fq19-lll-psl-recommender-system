@@ -10,6 +10,9 @@ from sklearn import preprocessing
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
+minRating = None
+maxRating = None
+
 def save_classifier(classifier, classifier_fname):
     classifier_file = open(classifier_fname, 'wb')
     pickle.dump(classifier, classifier_file)
