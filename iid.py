@@ -2,6 +2,7 @@
 
 import math
 import os
+import pickle
 
 import pandas
 import numpy as np
@@ -225,7 +226,7 @@ def getData():
     encoderPublisher = preprocessing.LabelEncoder()
     explicitRatingCount['publisher'] = encoderPublisher.fit_transform(explicitRatingCount['publisher'].astype(str))
 
-    
+    save_classifier(encoderISBN, "encoderISBN.pickle")
 
     def normalizeRatings(data):
         """
