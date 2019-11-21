@@ -1,0 +1,6 @@
+data/rating_obs.txt
+data/rating_truth.txt
+data/rating_targets.txt
+data/same_author_obs.txt
+data/same_publisher_obs.txt
+data/mean_rating_obs.txt
